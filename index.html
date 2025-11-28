@@ -244,7 +244,7 @@
                     <p><strong>Artist:</strong> Doja Cat</p>
                     <p><strong>Release:</strong> November 2019</p>
                     <p><strong>Peak Position:</strong> #1</p>
-                    <p><strong>Weeks on Chart:</strong> 40 weeks</p>
+                    <p><strong>Weeks on Chart:</strong> 38 weeks</p>
                 </div>
             </div>
         </div>
@@ -291,7 +291,7 @@
                     <tr>
                         <td>Total Weeks on Chart</td>
                         <td>65 weeks</td>
-                        <td>40 weeks</td>
+                        <td>38 weeks</td>
                     </tr>
                     <tr>
                         <td>Average Weekly Position</td>
@@ -420,31 +420,36 @@
     </footer>
 
     <script>
-        // Billboard Chart Data Table
+        // Preview first entry of each song from charts.csv
         Papa.parse('charts.csv', {
             download: true,
             header: true,
             complete: function(results) {
-                // Only keep rows for Rolling in the Deep and Say So
-                const chartData = results.data.filter(row => 
-                    row.song === 'Rolling In The Deep' || row.song === 'Say So'
-                );
+                const data = results.data;
 
-                if (chartData.length === 0) return;
+                // Filter to keep only the first entry for each song
+                const firstEntries = [];
+                const seenSongs = new Set();
+                for (const row of data) {
+                    if (!seenSongs.has(row.song)) {
+                        firstEntries.push(row);
+                        seenSongs.add(row.song);
+                    }
+                }
 
-                const headRow = Object.keys(chartData[0]);
-
-                // Populate header
+                // Populate table header
+                const headRow = Object.keys(firstEntries[0]);
                 const thead = document.getElementById('chartsPreviewHead');
                 thead.innerHTML = '<tr>' + headRow.map(col => `<th>${col}</th>`).join('') + '</tr>';
 
-                // Populate body
+                // Populate table body
                 const tbody = document.getElementById('chartsPreviewBody');
-                tbody.innerHTML = chartData.map(row => {
+                tbody.innerHTML = firstEntries.map(row => {
                     return '<tr>' + headRow.map(col => `<td>${row[col]}</td>`).join('') + '</tr>';
                 }).join('');
             }
         });
+
         const songIds = [
             '1CkvWZme3pRgbzaxZnTl5X', // Rolling in the Deep
             '3Dv1eDb0MEgF93GpLXlucZ'  // Say So
@@ -476,7 +481,7 @@
         new Chart(trajectoryCtx, {
             type: 'line',
             data: {
-                labels: Array.from({length: 40}, (_, i) => i + 1),
+                labels: Array.from({length: 65}, (_, i) => i + 1),
                 datasets: [{
                     label: 'Rolling in the Deep (2010-2011)',
                     data: [68,97,84,69,64,41,26,13,18,25,26,17,10,10,6,2,2,1,1,1,1,1,1,1,2,3,3,4,5,6,9,12,13,14,17,17,20,22,21,21,23,27,29,28,34,36,38,36,40,41,35,30,36,40,41,43,44,17,5,23,32,30,33,43,49],
