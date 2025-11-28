@@ -190,7 +190,7 @@
                 </div>
                 <div class="factor-card">
                     <h4>2. Sonic Features</h4>
-                    <p>Danceability, BPM, energy levels</p>
+                    <p>Danceability, tempo, energy levels</p>
                 </div>
                 <div class="factor-card">
                     <h4>3. Virality Timing</h4>
@@ -201,11 +201,7 @@
                     <p>Music videos, remixes, playlist placement</p>
                 </div>
                 <div class="factor-card">
-                    <h4>5. Radio & Discovery</h4>
-                    <p>Airplay, Shazam trends</p>
-                </div>
-                <div class="factor-card">
-                    <h4>6. Release Context</h4>
+                    <h4>5. Release Context</h4>
                     <p>Timing and competitive landscape</p>
                 </div>
             </div>
@@ -411,31 +407,41 @@
     </footer>
 
     <script>
-        // Preview first entry of each song from charts.csv
+        // Preview first 2 entries for specific songs
         Papa.parse('charts.csv', {
             download: true,
             header: true,
             complete: function(results) {
                 const data = results.data;
 
-                // Filter to keep only the first entry for each song
-                const firstEntries = [];
-                const seenSongs = new Set();
+                // Filter for the two songs and keep only first 2 entries each
+                const filtered = [];
+                const counts = {}; // track how many rows we have per song
+                const targetSongs = [
+                    { artist: 'Adele', song: 'Rolling In The Deep' },
+                    { artist: 'Doja Cat', song: 'Say So' }
+                ];
+
                 for (const row of data) {
-                    if (!seenSongs.has(row.song)) {
-                        firstEntries.push(row);
-                        seenSongs.add(row.song);
+                    for (const target of targetSongs) {
+                        if (row.artist === target.artist && row.song === target.song) {
+                            counts[row.song] = counts[row.song] || 0;
+                            if (counts[row.song] < 2) {
+                                filtered.push(row);
+                                counts[row.song]++;
+                            }
+                        }
                     }
                 }
 
                 // Populate table header
-                const headRow = Object.keys(firstEntries[0]);
+                const headRow = Object.keys(filtered[0]);
                 const thead = document.getElementById('chartsPreviewHead');
                 thead.innerHTML = '<tr>' + headRow.map(col => `<th>${col}</th>`).join('') + '</tr>';
 
                 // Populate table body
                 const tbody = document.getElementById('chartsPreviewBody');
-                tbody.innerHTML = firstEntries.map(row => {
+                tbody.innerHTML = filtered.map(row => {
                     return '<tr>' + headRow.map(col => `<td>${row[col]}</td>`).join('') + '</tr>';
                 }).join('');
             }
