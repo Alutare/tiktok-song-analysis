@@ -27,6 +27,16 @@
             text-align: center;
         }
 
+        .scrollable-table {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        .scrollable-table table {
+            width: 100%;
+            table-layout: auto;
+        }
+        
         header h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
@@ -200,13 +210,15 @@
                 </div>
             </div>
         </div>
-        <div class="section">
-            <h2>Data Preview</h2>
-            <table id="dataPreview" class="data-table">
-                <thead id="dataPreviewHead"></thead>
-                <tbody id="dataPreviewBody"></tbody>
-            </table>
-        </div>
+            <div class="section">
+                <h2>Selected Songs Data Preview</h2>
+                <div class="scrollable-table">
+                    <table id="dataPreview" class="data-table">
+                        <thead id="dataPreviewHead"></thead>
+                        <tbody id="dataPreviewBody"></tbody>
+                    </table>
+                </div>
+            </div>
         <div class="section">
             <h2>Case Studies</h2>
             <div class="song-comparison">
@@ -389,12 +401,19 @@
     </footer>
 
     <script>
-        // Preview head of data.csv
+        const songIds = [
+            '1CkvWZme3pRgbzaxZnTl5X', // Rolling in the Deep
+            '3Dv1eDb0MEgF93GpLXlucZ'  // Say So
+        ];
+
         Papa.parse('data.csv', {
             download: true,
             header: true,
             complete: function(results) {
-                const data = results.data.slice(0, 5); // first 5 rows
+                const data = results.data.filter(row => songIds.includes(row.id));
+
+                if (data.length === 0) return;
+
                 const headRow = Object.keys(data[0]);
 
                 // Populate header
