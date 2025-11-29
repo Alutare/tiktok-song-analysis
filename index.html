@@ -26,6 +26,70 @@
             padding: 3rem 2rem;
             text-align: center;
         }
+        .analysis-controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .analysis-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .analysis-btn:hover {
+            background: #5568d3;
+        }
+
+        .analysis-controls select {
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .analysis-results {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            min-height: 100px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
 
         .scrollable-table {
             overflow-x: auto;
@@ -223,6 +287,27 @@
                     </table>
                 </div>
             </div>
+            <div class="section">
+                <h2>Dataset Analysis Dashboard</h2>
+                
+                <div class="analysis-controls">
+                    <button id="analyzeBtn" class="analysis-btn">Analyze Full Dataset</button>
+                    <select id="analysisType">
+                        <option value="era-comparison">Era Comparison (Pre-2018 vs Post-2018)</option>
+                        <option value="sonic-features">Sonic Features Distribution</option>
+                        <option value="longevity-factors">Chart Longevity Factors</option>
+                        <option value="peak-performance">Peak Position Analysis</option>
+                    </select>
+                </div>
+                
+                <div id="analysisResults" class="analysis-results">
+                    <p style="color: #999;">Click "Analyze Full Dataset" to generate insights from your CSV files</p>
+                </div>
+                
+                <div class="chart-container" id="dynamicChartContainer" style="display: none;">
+                    <canvas id="dynamicChart"></canvas>
+                </div>
+            </div>
         <div class="section">
             <h2>Case Studies</h2>
             <div class="song-comparison">
@@ -407,6 +492,330 @@
     </footer>
 
     <script>
+        let chartsData = [];
+        let songsData = [];
+        let dynamicChart = null;
+
+        // Load both datasets
+        Papa.parse('charts.csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                chartsData = results.data.filter(row => row.song && row.artist);
+            }
+        });
+
+        Papa.parse('data.csv', {
+            download: true,
+            header: true,
+            dynamicTyping: true,
+            complete: function(results) {
+                songsData = results.data.filter(row => row.name);
+            }
+        });
+
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            const analysisType = document.getElementById('analysisType').value;
+            const resultsDiv = document.getElementById('analysisResults');
+            const chartContainer = document.getElementById('dynamicChartContainer');
+            
+            if (chartsData.length === 0 || songsData.length === 0) {
+                resultsDiv.innerHTML = '<p style="color: red;">Data still loading, please try again...</p>';
+                return;
+            }
+            
+            switch(analysisType) {
+                case 'era-comparison':
+                    analyzeEraComparison(resultsDiv, chartContainer);
+                    break;
+                case 'sonic-features':
+                    analyzeSonicFeatures(resultsDiv, chartContainer);
+                    break;
+                case 'longevity-factors':
+                    analyzeLongevity(resultsDiv, chartContainer);
+                    break;
+                case 'peak-performance':
+                    analyzePeakPerformance(resultsDiv, chartContainer);
+                    break;
+            }
+        });
+
+        function analyzeEraComparison(resultsDiv, chartContainer) {
+            // Split charts data by era
+            const preTikTok = chartsData.filter(row => {
+                const year = new Date(row.date).getFullYear();
+                return year >= 2010 && year <= 2015;
+            });
+            
+            const tikTokEra = chartsData.filter(row => {
+                const year = new Date(row.date).getFullYear();
+                return year >= 2018;
+            });
+            
+            // Calculate average weeks on chart
+            const preTikTokAvg = calculateAverageWeeks(preTikTok);
+            const tikTokAvg = calculateAverageWeeks(tikTokEra);
+            
+            resultsDiv.innerHTML = `
+                <h3>Era Comparison Results</h3>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${preTikTokAvg}</div>
+                        <div class="stat-label">Pre-TikTok Avg Weeks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${tikTokAvg}</div>
+                        <div class="stat-label">TikTok Era Avg Weeks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${((preTikTokAvg - tikTokAvg) / preTikTokAvg * 100).toFixed(1)}%</div>
+                        <div class="stat-label">Reduction in Longevity</div>
+                    </div>
+                </div>
+                <p><strong>Finding:</strong> Songs in the TikTok era spend ${preTikTokAvg - tikTokAvg} fewer weeks on chart on average, supporting the accelerated lifecycle hypothesis.</p>
+            `;
+            
+            chartContainer.style.display = 'block';
+            createBarChart(['Pre-TikTok (2010-2015)', 'TikTok Era (2018+)'], [preTikTokAvg, tikTokAvg], 'Average Weeks on Billboard Hot 100');
+        }
+
+        function analyzeSonicFeatures(resultsDiv, chartContainer) {
+            // Get average sonic features by era
+            const preTikTok = songsData.filter(row => row.year >= 2010 && row.year <= 2015);
+            const tikTokEra = songsData.filter(row => row.year >= 2018);
+            
+            const avgDance = {
+                pre: average(preTikTok.map(s => s.danceability)),
+                tiktok: average(tikTokEra.map(s => s.danceability))
+            };
+            
+            const avgEnergy = {
+                pre: average(preTikTok.map(s => s.energy)),
+                tiktok: average(tikTokEra.map(s => s.energy))
+            };
+            
+            const avgTempo = {
+                pre: average(preTikTok.map(s => s.tempo)),
+                tiktok: average(tikTokEra.map(s => s.tempo))
+            };
+            
+            resultsDiv.innerHTML = `
+                <h3>Sonic Features Analysis</h3>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${(avgDance.tiktok - avgDance.pre > 0 ? '+' : '')}${((avgDance.tiktok - avgDance.pre) * 100).toFixed(1)}%</div>
+                        <div class="stat-label">Danceability Increase</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${(avgEnergy.tiktok - avgEnergy.pre > 0 ? '+' : '')}${((avgEnergy.tiktok - avgEnergy.pre) * 100).toFixed(1)}%</div>
+                        <div class="stat-label">Energy Change</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${avgTempo.tiktok.toFixed(0)} BPM</div>
+                        <div class="stat-label">TikTok Era Avg Tempo</div>
+                    </div>
+                </div>
+                <p><strong>Finding:</strong> TikTok-era songs show ${avgDance.tiktok > avgDance.pre ? 'higher' : 'lower'} danceability, correlating with platform's dance challenge culture.</p>
+            `;
+            
+            chartContainer.style.display = 'block';
+            createRadarChart(
+                ['Danceability', 'Energy', 'Valence', 'Tempo (normalized)'],
+                [
+                    [avgDance.pre, avgEnergy.pre, average(preTikTok.map(s => s.valence)), avgTempo.pre / 200],
+                    [avgDance.tiktok, avgEnergy.tiktok, average(tikTokEra.map(s => s.valence)), avgTempo.tiktok / 200]
+                ],
+                ['Pre-TikTok', 'TikTok Era']
+            );
+        }
+
+        function analyzeLongevity(resultsDiv, chartContainer) {
+            // Group songs by total weeks on chart
+            const songWeeks = {};
+            chartsData.forEach(row => {
+                const key = `${row.song}|${row.artist}`;
+                songWeeks[key] = (songWeeks[key] || 0) + 1;
+            });
+            
+            const allWeeks = Object.values(songWeeks);
+            const avgWeeks = average(allWeeks);
+            const maxWeeks = Math.max(...allWeeks);
+            const minWeeks = Math.min(...allWeeks);
+            
+            resultsDiv.innerHTML = `
+                <h3>Chart Longevity Distribution</h3>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${avgWeeks.toFixed(1)}</div>
+                        <div class="stat-label">Average Weeks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${maxWeeks}</div>
+                        <div class="stat-label">Maximum Weeks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${minWeeks}</div>
+                        <div class="stat-label">Minimum Weeks</div>
+                    </div>
+                </div>
+                <p><strong>Finding:</strong> Chart longevity varies widely (${minWeeks}-${maxWeeks} weeks), with factors beyond virality determining staying power.</p>
+            `;
+            
+            chartContainer.style.display = 'block';
+            const distribution = createDistribution(allWeeks, 10);
+            createBarChart(distribution.labels, distribution.counts, 'Distribution of Songs by Weeks on Chart');
+        }
+
+        function analyzePeakPerformance(resultsDiv, chartContainer) {
+            // Analyze peak positions
+            const peakCounts = {1: 0, '2-5': 0, '6-10': 0, '11-20': 0, '21+': 0};
+            
+            const songPeaks = {};
+            chartsData.forEach(row => {
+                const key = `${row.song}|${row.artist}`;
+                const peak = parseInt(row['peak-rank']);
+                if (!songPeaks[key] || peak < songPeaks[key]) {
+                    songPeaks[key] = peak;
+                }
+            });
+            
+            Object.values(songPeaks).forEach(peak => {
+                if (peak === 1) peakCounts[1]++;
+                else if (peak <= 5) peakCounts['2-5']++;
+                else if (peak <= 10) peakCounts['6-10']++;
+                else if (peak <= 20) peakCounts['11-20']++;
+                else peakCounts['21+']++;
+            });
+            
+            const numberOnes = peakCounts[1];
+            const topTen = peakCounts[1] + peakCounts['2-5'] + peakCounts['6-10'];
+            
+            resultsDiv.innerHTML = `
+                <h3>Peak Position Analysis</h3>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${numberOnes}</div>
+                        <div class="stat-label">#1 Hits</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${topTen}</div>
+                        <div class="stat-label">Top 10 Hits</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${((numberOnes / Object.keys(songPeaks).length) * 100).toFixed(1)}%</div>
+                        <div class="stat-label">Chart-Toppers</div>
+                    </div>
+                </div>
+                <p><strong>Finding:</strong> ${numberOnes} songs reached #1, representing ${((numberOnes / Object.keys(songPeaks).length) * 100).toFixed(1)}% of charting tracks.</p>
+            `;
+            
+            chartContainer.style.display = 'block';
+            createBarChart(
+                ['#1', '#2-5', '#6-10', '#11-20', '#21+'],
+                [peakCounts[1], peakCounts['2-5'], peakCounts['6-10'], peakCounts['11-20'], peakCounts['21+']],
+                'Distribution of Peak Chart Positions'
+            );
+        }
+
+        // Utility functions
+        function calculateAverageWeeks(data) {
+            const songWeeks = {};
+            data.forEach(row => {
+                const key = `${row.song}|${row.artist}`;
+                songWeeks[key] = (songWeeks[key] || 0) + 1;
+            });
+            const weeks = Object.values(songWeeks);
+            return (weeks.reduce((a, b) => a + b, 0) / weeks.length).toFixed(1);
+        }
+
+        function average(arr) {
+            const filtered = arr.filter(x => x != null && !isNaN(x));
+            return filtered.reduce((a, b) => a + b, 0) / filtered.length;
+        }
+
+        function createDistribution(data, bins) {
+            const max = Math.max(...data);
+            const binSize = Math.ceil(max / bins);
+            const counts = new Array(bins).fill(0);
+            const labels = [];
+            
+            for (let i = 0; i < bins; i++) {
+                const start = i * binSize + 1;
+                const end = (i + 1) * binSize;
+                labels.push(`${start}-${end}`);
+            }
+            
+            data.forEach(val => {
+                const binIndex = Math.min(Math.floor((val - 1) / binSize), bins - 1);
+                counts[binIndex]++;
+            });
+            
+            return {labels, counts};
+        }
+
+        function createBarChart(labels, data, title) {
+            if (dynamicChart) dynamicChart.destroy();
+            
+            const ctx = document.getElementById('dynamicChart').getContext('2d');
+            dynamicChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: title,
+                        data: data,
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRadarChart(labels, datasets, datasetLabels) {
+            if (dynamicChart) dynamicChart.destroy();
+            
+            const ctx = document.getElementById('dynamicChart').getContext('2d');
+            dynamicChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: datasetLabels[0],
+                            data: datasets[0],
+                            borderColor: '#764ba2',
+                            backgroundColor: 'rgba(118, 75, 162, 0.2)'
+                        },
+                        {
+                            label: datasetLabels[1],
+                            data: datasets[1],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 1
+                        }
+                    }
+                }
+            });
+        }
         // Preview first 2 entries for specific songs
         Papa.parse('charts.csv', {
             download: true,
